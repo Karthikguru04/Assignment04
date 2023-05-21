@@ -1,0 +1,93 @@
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+
+public class RecentlyPlayedStore
+ {
+    private final int capacity;
+    private final int nSongs;
+    private final Map<Integer, List<SongPlay>> store;
+
+    public RecentlyPlayedStore(int capacity, int nSongs) {
+        this.capacity = capacity;
+        this.nSongs = nSongs;
+        this.store = new HashMap<>();
+    }
+
+    public void addPlayedSong(int userId, String songId) {
+        List<SongPlay> songList = store.getOrDefault(userId, new LinkedList<>());
+
+        // Check if user already has played this song
+        SongPlay existingSong = null;
+        for (SongPlay song : songList) {
+            if (song.getSongId().equals(songId)) {
+                existingSong = song;
+                break;
+            }
+        }
+        if (existingSong != null) {
+            songList.remove(existingSong);
+        }
+
+        // Add current song to the beginning of list
+        SongPlay newSong = new SongPlay(songId, LocalDateTime.now());
+        songList.add(0, newSong);
+
+        // Remove least recently played song if the store has reached the capacity
+        if (songList.size() > nSongs) {
+            songList.remove(nSongs);
+        }
+
+        store.put(userId, songList);
+
+        // Remove least recently played song across all users if store is full
+        if (store.size() > capacity) {
+            int oldestUserId = -1;
+            LocalDateTime oldestTimestamp = LocalDateTime.now();
+            for (Map.Entry<Integer, List<SongPlay>> entry : store.entrySet()) {
+                List<SongPlay> list = entry.getValue();
+                if (!list.isEmpty() && list.get(list.size() - 1).getTimestamp().isBefore(oldestTimestamp)) {
+                    oldestUserId = entry.getKey();
+                    oldestTimestamp = list.get(list.size() - 1).getTimestamp();
+                }
+            }
+            if (oldestUserId != -1) {
+                store.remove(oldestUserId);
+            }
+        }
+    }
+
+    public List<String> getRecentSongs(int userId) {
+        List<SongPlay> songList = store.getOrDefault(userId, new LinkedList<>());
+        List<String> recentSongs = new LinkedList<>();
+        for (SongPlay song : songList) {
+            recentSongs.add(song.getSongId());
+        }
+        return recentSongs;
+    }
+
+    private static class SongPlay {
+        private final String songId;
+        private final LocalDateTime timestamp;
+
+        public SongPlay(String songId, LocalDateTime timestamp) {
+            this.songId = songId;
+            this.timestamp = timestamp;
+        }
+
+        public String getSongId() {
+            return songId;
+        }
+
+        public LocalDateTime getTimestamp() {
+            return timestamp;
+        }
+    }
+}
+ RecentlyPlayedStore store = new RecentlyPlayedStore(10, 3);
+ store.addPlayedSong(1, "s1");
+store.addPlayedSong(1,  "s2");
+store.addPlayedSong(1,  "s3");
